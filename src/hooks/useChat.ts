@@ -1,16 +1,25 @@
 import { useState, useCallback } from 'react';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
-import { Message } from '@/types/chat';
+import { Message, ChatSettings } from '@/types/chat';
 import { streamChat } from '@/lib/api/chat';
 
 export interface UseChatReturn {
   messages: Message[];
   input: string;
   isLoading: boolean;
+  settings: ChatSettings;
   setInput: (input: string) => void;
+  setSettings: (settings: ChatSettings) => void;
   sendMessage: (e?: React.FormEvent) => Promise<void>;
   clearMessages: () => void;
 }
+
+const DEFAULT_SETTINGS: ChatSettings = {
+  model: 'claude-sonnet-4-5-20250929',
+  temperature: 1,
+  maxTokens: 4096,
+  systemPrompt: '',
+};
 
 /**
  * Custom hook for managing chat state and interactions
@@ -20,6 +29,7 @@ export function useChat(): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [settings, setSettings] = useState<ChatSettings>(DEFAULT_SETTINGS);
 
   const sendMessage = useCallback(
     async (e?: React.FormEvent) => {
@@ -50,6 +60,7 @@ export function useChat(): UseChatReturn {
 
         await streamChat({
           messages: apiMessages,
+          settings,
           onChunk: (chunk) => {
             assistantMessage += chunk;
 
@@ -97,7 +108,7 @@ export function useChat(): UseChatReturn {
         setIsLoading(false);
       }
     },
-    [input, isLoading, messages]
+    [input, isLoading, messages, settings]
   );
 
   const clearMessages = useCallback(() => {
@@ -109,7 +120,9 @@ export function useChat(): UseChatReturn {
     messages,
     input,
     isLoading,
+    settings,
     setInput,
+    setSettings,
     sendMessage,
     clearMessages,
   };

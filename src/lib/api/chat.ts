@@ -1,7 +1,9 @@
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
+import { ChatSettings } from '@/types/chat';
 
 export interface StreamChatOptions {
   messages: MessageParam[];
+  settings?: ChatSettings;
   onChunk: (text: string) => void;
   onError?: (error: Error) => void;
   onComplete?: () => void;
@@ -14,6 +16,7 @@ export interface StreamChatOptions {
  */
 export async function streamChat({
   messages,
+  settings,
   onChunk,
   onError,
   onComplete,
@@ -24,7 +27,7 @@ export async function streamChat({
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, settings }),
     });
 
     if (!response.ok) {

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { NextRequest } from 'next/server';
+import { ChatSettings } from '@/types/chat';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -9,7 +10,10 @@ const anthropic = new Anthropic({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages } = body as { messages: MessageParam[] };
+    const { messages, settings } = body as {
+      messages: MessageParam[];
+      settings?: ChatSettings;
+    };
 
     if (!messages || messages.length === 0) {
       return new Response(
@@ -25,14 +29,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Extract settings or use defaults
+    const model = settings?.model || 'claude-sonnet-4-5-20250929';
+    const temperature = settings?.temperature ?? 1;
+    const maxTokens = settings?.maxTokens || 4096;
+    const systemPrompt = settings?.systemPrompt?.trim();
+
     // Create a streaming response using the MessageStream helper
     const stream = new ReadableStream({
       async start(controller) {
         try {
           const messageStream = anthropic.messages.stream({
-            model: 'claude-sonnet-4-5-20250929',
-            max_tokens: 4096,
+            model,
+            max_tokens: maxTokens,
+            temperature,
             messages: messages,
+            ...(systemPrompt && { system: systemPrompt }),
           });
 
           // Use the 'text' event handler from MessageStream

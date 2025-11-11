@@ -4,3 +4,4 @@ export { ChatMessage } from './ChatMessage';
 export { ChatMessages } from './ChatMessages';
 export { LoadingIndicator } from './LoadingIndicator';
 export { MessageContent } from './MessageContent';
+export { ChatSettingsDialog } from './ChatSettingsDialog';
