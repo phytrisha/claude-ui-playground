@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import { NextRequest } from 'next/server';
-import { ChatRequest } from '@/types/chat';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -8,8 +8,8 @@ const anthropic = new Anthropic({
 
 export async function POST(req: NextRequest) {
   try {
-    const body: ChatRequest = await req.json();
-    const { messages } = body;
+    const body = await req.json();
+    const { messages } = body as { messages: MessageParam[] };
 
     if (!messages || messages.length === 0) {
       return new Response(
@@ -25,24 +25,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create a streaming response
+    // Create a streaming response using the MessageStream helper
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const messageStream = await anthropic.messages.create({
+          const messageStream = anthropic.messages.stream({
             model: 'claude-sonnet-4-5-20250929',
             max_tokens: 4096,
             messages: messages,
-            stream: true,
           });
 
-          for await (const event of messageStream) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              const text = event.delta.text;
-              controller.enqueue(new TextEncoder().encode(text));
-            }
-          }
+          // Use the 'text' event handler from MessageStream
+          messageStream.on('text', (text) => {
+            controller.enqueue(new TextEncoder().encode(text));
+          });
 
+          messageStream.on('error', (error) => {
+            console.error('Stream error:', error);
+            controller.enqueue(
+              new TextEncoder().encode(
+                JSON.stringify({ error: error.message })
+              )
+            );
+            controller.close();
+          });
+
+          // Wait for the stream to complete
+          await messageStream.done();
           controller.close();
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
